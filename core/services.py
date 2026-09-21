@@ -34,6 +34,12 @@ class ComprobanteFactory:
         prefijo = "FAC" if tipo_documento == 'FACTURA' else "BOL"
         numero_doc = f"{prefijo}-100{venta.id}"
 
+        # Validación estricta de datos fiscales obligatorios para Factura (OWASP e ISO 27000)
+        if tipo_documento == 'FACTURA':
+            campos_requeridos = ['rut', 'razon_social', 'giro', 'direccion']
+            if not datos_factura or not all(str(datos_factura.get(c, '')).strip() for c in campos_requeridos):
+                raise ValueError("Para comprobantes de tipo Factura, todos los datos tributarios son obligatorios.")
+
         # Se instancia el comprobante
         comprobante = Comprobante.objects.create(
             id_venta=venta,
@@ -43,14 +49,14 @@ class ComprobanteFactory:
             iva=venta.monto_iva
         )
 
-        # Si el tipo es Factura, es obligatorio guardar la información tributaria
-        if tipo_documento == 'FACTURA' and datos_factura:
+        # Si es Factura, se persisten los datos tributarios validados
+        if tipo_documento == 'FACTURA':
             DatosFacturacion.objects.create(
                 id_comprobante=comprobante,
-                rut=datos_factura.get('rut', ''),
-                razon_social=datos_factura.get('razon_social', ''),
-                giro=datos_factura.get('giro', ''),
-                direccion=datos_factura.get('direccion', '')
+                rut=str(datos_factura['rut']).strip(),
+                razon_social=str(datos_factura['razon_social']).strip(),
+                giro=str(datos_factura['giro']).strip(),
+                direccion=str(datos_factura['direccion']).strip()
             )
         
         return comprobante
